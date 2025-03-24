@@ -2,8 +2,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/joho/godotenv"
+	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -24,27 +27,27 @@ func startHTTPServer() {
 
 		// Get a random instance
 		selectedInstance := keys[rand.Intn(len(keys))]
-		fmt.Println("Clé aléatoire :", selectedInstance)
 		newURL := fmt.Sprintf("http://localhost:%d/%s", instances[selectedInstance].Port, query)
 		fmt.Println(newURL)
 		http.Redirect(w, r, newURL, http.StatusTemporaryRedirect)
 	})
 
 	fmt.Println("Serveur HTTP démarré sur le port 8080")
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":"+os.Getenv("SERVER_PORT"), nil)
 }
 
 func main() {
 	go startHTTPServer()
+	godotenv.Load()
 	for {
-		apiURL := "http://localhost:1234/microservices"
-		data, err := FetchMicroservices(apiURL)
+		data, err := FetchMicroservices(fmt.Sprintf("%s/microservices", os.Getenv("DISCOVERY_SERVER_URL")))
 		if err != nil {
 			fmt.Println("Erreur lors de la récupération des microservices:", err)
 			return
 		}
 		RegisteredMicroservices = data
-		time.Sleep(5 * time.Second)
+		log.Println("Refreshed microservices from discovery server")
+		time.Sleep(10 * time.Second)
 	}
 
 }
