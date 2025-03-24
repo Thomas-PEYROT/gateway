@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/joho/godotenv"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -17,7 +18,11 @@ func startHTTPServer() {
 		microserviceName := parts[0]
 		query := strings.Join(parts[1:], "/")
 
-		instances := RegisteredMicroservices[microserviceName]
+		instances, exists := RegisteredMicroservices[microserviceName]
+		if !exists || len(instances) == 0 {
+			http.Error(w, "Microservice not found", http.StatusNotFound)
+			return
+		}
 
 		// Extract instances
 		keys := make([]string, 0, len(instances))
@@ -28,8 +33,41 @@ func startHTTPServer() {
 		// Get a random instance
 		selectedInstance := keys[rand.Intn(len(keys))]
 		newURL := fmt.Sprintf("http://localhost:%d/%s", instances[selectedInstance].Port, query)
-		fmt.Println(newURL)
-		http.Redirect(w, r, newURL, http.StatusTemporaryRedirect)
+		fmt.Println("Forwarding request to:", newURL)
+
+		// Create a new request
+		req, err := http.NewRequest(r.Method, newURL, r.Body)
+		if err != nil {
+			http.Error(w, "Failed to create request", http.StatusInternalServerError)
+			return
+		}
+
+		// Copy headers from the original request
+		for name, values := range r.Header {
+			for _, value := range values {
+				req.Header.Add(name, value)
+			}
+		}
+
+		// Execute the request
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			http.Error(w, "Failed to forward request", http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+
+		// Copy response headers
+		for name, values := range resp.Header {
+			for _, value := range values {
+				w.Header().Add(name, value)
+			}
+		}
+		w.WriteHeader(resp.StatusCode)
+
+		// Copy response body
+		io.Copy(w, resp.Body)
 	})
 
 	fmt.Println("Serveur HTTP démarré sur le port 8080")
