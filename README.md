@@ -1,6 +1,7 @@
 # Gateway
 
 This project is the API gateway of [Go microservices project](https://github.com/Thomas-PEYROT/go-microservices-architecture).
+Note that if a microservice is launched multiple times, the method used for load balancing is **random load balancing**.
 
 ## Setup
 
