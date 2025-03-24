@@ -9,3 +9,15 @@ First of all, clone this repository :
 ```
 git clone https://github.com/Thomas-PEYROT/gateway
 ```
+
+After that, copy the example `.env` file :
+
+```
+cp .env.example .env
+```
+
+Finally, launch the server :
+
+```
+go run .
+```
